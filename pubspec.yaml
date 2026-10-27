@@ -1,0 +1,78 @@
+
+name: voxora
+description: "Voxora - AI Spoken English Coach"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management, routing, DI
+  get: ^4.7.2
+
+  # Networking
+  dio: ^5.8.0+1
+  pretty_dio_logger: ^1.4.0
+
+  # Local storage
+  shared_preferences: ^2.3.3
+  flutter_secure_storage: ^9.2.4
+
+  # Audio recording & playback
+  record: ^7.1.2
+  just_audio: ^0.9.46
+
+  # Speech
+  speech_to_text: ^7.0.0
+  permission_handler: ^11.3.1
+
+  # Environment variables
+  flutter_dotenv: ^5.2.1
+
+  # Animations
+  lottie: ^3.2.0
+  animated_text_kit: ^4.2.3
+
+  # UI utilities
+  flutter_svg: ^2.0.16
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  flutter_rating_bar: ^4.0.1
+  percent_indicator: ^4.2.4
+  fl_chart: ^0.69.2
+
+  # Connectivity
+  connectivity_plus: ^6.1.4
+
+  # File & path
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # JSON serialization
+  json_annotation: ^4.9.0
+
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.5.1
+  logger: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.14
+  json_serializable: ^6.9.2
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    3  - assets/animations/
+    - assets/audio/
+    - .env
