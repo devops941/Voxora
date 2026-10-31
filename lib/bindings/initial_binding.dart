@@ -4,9 +4,13 @@ import 'package:voxora/core/network/api_client.dart';
 import 'package:voxora/core/storage/local_storage.dart';
 import 'package:voxora/data/providers/ai_provider.dart';
 import 'package:voxora/data/providers/auth_provider.dart';
+import 'package:voxora/data/providers/certificate_provider.dart';
+import 'package:voxora/data/providers/final_assessment_provider.dart';
 import 'package:voxora/data/providers/lesson_provider.dart';
 import 'package:voxora/data/providers/progress_provider.dart';
 import 'package:voxora/data/repositories/auth_repository.dart';
+import 'package:voxora/data/repositories/certificate_repository.dart';
+import 'package:voxora/data/repositories/final_assessment_repository.dart';
 import 'package:voxora/data/repositories/lesson_repository.dart';
 import 'package:voxora/data/repositories/progress_repository.dart';
 
@@ -45,6 +49,16 @@ class InitialBinding extends Bindings {
       fenix: true,
     );
 
+    Get.lazyPut<FinalAssessmentProvider>(
+      () => FinalAssessmentProvider(Get.find<ApiClient>()),
+      fenix: true,
+    );
+
+    Get.lazyPut<CertificateProvider>(
+      () => CertificateProvider(Get.find<ApiClient>()),
+      fenix: true,
+    );
+
     // ── Repositories ──────────────────────────────
     Get.lazyPut<AuthRepository>(
       () => AuthRepository(
@@ -61,6 +75,16 @@ class InitialBinding extends Bindings {
 
     Get.lazyPut<ProgressRepository>(
       () => ProgressRepository(Get.find<ProgressProvider>()),
+      fenix: true,
+    );
+
+    Get.lazyPut<FinalAssessmentRepository>(
+      () => FinalAssessmentRepository(Get.find<FinalAssessmentProvider>()),
+      fenix: true,
+    );
+
+    Get.lazyPut<CertificateRepository>(
+      () => CertificateRepository(Get.find<CertificateProvider>()),
       fenix: true,
     );
   }

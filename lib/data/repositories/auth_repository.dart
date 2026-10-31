@@ -135,11 +135,29 @@ class AuthRepository {
     await _localStorage.clearAll();
   }
 
-  // ── Forgot password ───────────────────────────────
+  // ── Forgot password & OTP verification ───────────────
 
-  /// Sends a password-reset email to [email].
+  /// Sends a password-reset email with a 6-digit OTP to [email].
   Future<void> forgotPassword(String email) async {
     await _authProvider.forgotPassword(email: email);
+  }
+
+  /// Verifies the 6-digit OTP code sent to [email].
+  Future<Map<String, dynamic>> verifyOtp(String email, String otp) async {
+    return await _authProvider.verifyOtp(email: email, otp: otp);
+  }
+
+  /// Resets the user's password using the verified OTP.
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    await _authProvider.resetPassword(
+      email: email,
+      otp: otp,
+      newPassword: newPassword,
+    );
   }
 
   // ── Cached user ───────────────────────────────────
@@ -147,6 +165,34 @@ class AuthRepository {
   /// Returns the locally-cached [UserModel], or null if not available.
   Future<UserModel?> getCachedUser() async {
     return _localStorage.getUser();
+  }
+
+  /// Fetches the latest authenticated user profile from the backend.
+  Future<UserModel> getMe() async {
+    final user = await _authProvider.getMe();
+    await _localStorage.saveUser(user);
+    return user;
+  }
+
+  // ── Update Profile ─────────────────────────────────
+
+  /// Updates user profile details in database and persists updated user locally.
+  Future<UserModel> updateProfile({
+    String? name,
+    String? level,
+    String? avatarUrl,
+    String? bio,
+    String? location,
+  }) async {
+    final user = await _authProvider.updateProfile(
+      name: name,
+      level: level,
+      avatarUrl: avatarUrl,
+      bio: bio,
+      location: location,
+    );
+    await _localStorage.saveUser(user);
+    return user;
   }
 
   // ── Update Level ───────────────────────────────────

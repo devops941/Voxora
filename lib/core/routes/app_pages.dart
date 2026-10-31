@@ -9,8 +9,24 @@ import 'package:voxora/modules/auth/bindings/auth_binding.dart';
 import 'package:voxora/modules/auth/views/login_view.dart';
 import 'package:voxora/modules/auth/views/register_view.dart';
 import 'package:voxora/modules/auth/views/forgot_password_view.dart';
+import 'package:voxora/modules/auth/views/verify_otp_view.dart';
+import 'package:voxora/modules/auth/views/reset_password_view.dart';
 import 'package:voxora/modules/dashboard/views/dashboard_view.dart';
 import 'package:voxora/modules/level_selection/views/level_selection_view.dart';
+import 'package:voxora/modules/profile/views/profile_view.dart';
+import 'package:voxora/modules/curriculum/bindings/curriculum_binding.dart';
+import 'package:voxora/modules/curriculum/views/curriculum_view.dart';
+import 'package:voxora/modules/lesson/bindings/lesson_binding.dart';
+import 'package:voxora/modules/lesson/views/lesson_view.dart';
+import 'package:voxora/modules/speaking_practice/bindings/speaking_practice_binding.dart';
+import 'package:voxora/modules/speaking_practice/views/speaking_practice_view.dart';
+import 'package:voxora/modules/certificate/bindings/certificate_binding.dart';
+import 'package:voxora/modules/certificate/views/certificate_form_view.dart';
+import 'package:voxora/modules/final_assessment/bindings/final_assessment_binding.dart';
+import 'package:voxora/modules/final_assessment/views/assessment_result_view.dart';
+import 'package:voxora/modules/final_assessment/views/final_assessment_view.dart';
+import 'package:voxora/modules/progress/bindings/progress_binding.dart';
+import 'package:voxora/modules/progress/views/progress_view.dart';
 
 import 'app_routes.dart';
 
@@ -54,6 +70,20 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
+      name: AppRoutes.verifyOtp,
+      page: () => const VerifyOtpView(),
+      binding: AuthBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: AppRoutes.resetPassword,
+      page: () => const ResetPasswordView(),
+      binding: AuthBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
       name: AppRoutes.levelSelection,
       page: () => const LevelSelectionView(),
       transition: Transition.rightToLeft,
@@ -67,19 +97,22 @@ class AppPages {
     ),
     GetPage(
       name: AppRoutes.curriculum,
-      page: () => const _PlaceholderView(name: 'Curriculum'),
+      page: () => const CurriculumView(),
+      binding: CurriculumBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: AppRoutes.lesson,
-      page: () => const _PlaceholderView(name: 'Lesson'),
+      page: () => const LessonView(),
+      binding: LessonBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: AppRoutes.speakingPractice,
-      page: () => const _PlaceholderView(name: 'Speaking Practice'),
+      page: () => const SpeakingPracticeView(),
+      binding: SpeakingPracticeBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
@@ -91,19 +124,40 @@ class AppPages {
     ),
     GetPage(
       name: AppRoutes.progress,
-      page: () => const _PlaceholderView(name: 'Progress'),
+      page: () => const ProgressView(),
+      binding: ProgressBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: AppRoutes.profile,
-      page: () => const _PlaceholderView(name: 'Profile'),
+      page: () => const ProfileView(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: AppRoutes.settings,
       page: () => const _PlaceholderView(name: 'Settings'),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: AppRoutes.finalAssessment,
+      page: () => FinalAssessmentView(),
+      binding: FinalAssessmentBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: AppRoutes.assessmentResult,
+      page: () => AssessmentResultView(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: AppRoutes.certificateForm,
+      page: () => const CertificateFormView(),
+      binding: CertificateBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
@@ -121,10 +175,7 @@ class _PlaceholderView extends StatelessWidget {
     final hPadding = (size.width * 0.08).clamp(20.0, 40.0);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(name),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(name), elevation: 0),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -138,7 +189,9 @@ class _PlaceholderView extends StatelessWidget {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.12),
                   ),
                   child: Icon(
                     Icons.construction_rounded,
@@ -151,16 +204,16 @@ class _PlaceholderView extends StatelessWidget {
                   name,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'This feature is being tuned for your fluency journey.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                 ),
               ],
             ),

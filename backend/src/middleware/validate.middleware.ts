@@ -8,7 +8,7 @@ export function validate(schema: ZodSchema) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = error.errors.map((e) => ({
+        const formattedErrors = error.issues.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
         }));
@@ -31,7 +31,7 @@ export function validateQuery(schema: ZodSchema) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = error.errors.map((e) => ({
+        const formattedErrors = error.issues.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
         }));
@@ -54,7 +54,7 @@ export function validateParams(schema: ZodSchema) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = error.errors.map((e) => ({
+        const formattedErrors = error.issues.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
         }));

@@ -26,8 +26,9 @@ dependencies:
   record: ^7.1.2
   just_audio: ^0.9.46
 
-  # Speech
+  # Speech & TTS
   speech_to_text: ^7.0.0
+  flutter_tts: ^4.2.2
   permission_handler: ^11.3.1
 
   # Environment variables
@@ -59,6 +60,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.5.1
   logger: ^2.5.0
+  google_sign_in: 6.2.2
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +75,6 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    3  - assets/animations/
+    - assets/animations/
     - assets/audio/
     - .env

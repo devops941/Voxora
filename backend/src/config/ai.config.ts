@@ -1,14 +1,33 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import config from './env';
 
-const anthropicClient = new Anthropic({
-  apiKey: config.anthropicApiKey,
-  defaultHeaders: {
-    'anthropic-beta': 'prompt-caching-2024-07-31',
-  },
-});
+export const anthropicClient = config.anthropicApiKey && !config.anthropicApiKey.includes('dummy')
+  ? new Anthropic({
+      apiKey: config.anthropicApiKey,
+      timeout: 5000,
+    })
+  : null;
 
-export const DEFAULT_MODEL = config.anthropicModel || 'claude-haiku-4-5-20251001';
+function buildGeminiClient(key: string): InstanceType<typeof GoogleGenAI> {
+  // AQ... keys are the new Google AI Studio format — use Bearer auth instead of x-goog-api-key
+  if (key.startsWith('AQ')) {
+    return new GoogleGenAI({
+      httpOptions: {
+        headers: { 'Authorization': `Bearer ${key}` },
+      },
+    });
+  }
+  return new GoogleGenAI({ apiKey: key });
+}
+
+export const geminiClient = config.geminiApiKey && !config.geminiApiKey.includes('dummy')
+  ? buildGeminiClient(config.geminiApiKey)
+  : null;
+
+export const CLAUDE_MODEL = config.anthropicModel || 'claude-3-5-haiku-20241022';
+export const GEMINI_MODEL = config.geminiModel || 'gemini-2.5-flash';
+export const DEFAULT_MODEL = CLAUDE_MODEL;
 
 export const MAX_TOKENS = {
   chat: 1024,
@@ -17,4 +36,7 @@ export const MAX_TOKENS = {
   assessment: 2048,
 };
 
-export default anthropicClient;
+export default {
+  anthropic: anthropicClient,
+  gemini: geminiClient,
+};

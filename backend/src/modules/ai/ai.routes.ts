@@ -9,6 +9,7 @@ const assessSpeechSchema = z.object({
   transcript: z.string().min(1, 'Transcript is required'),
   selectedLevel: z.string().optional(),
   durationSeconds: z.number().optional(),
+  userId: z.string().optional(),
 });
 
 router.post('/assess-speech', validate(assessSpeechSchema), (req, res, next) =>

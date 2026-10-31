@@ -12,8 +12,20 @@ interface Config {
   refreshTokenExpiresIn: string;
   anthropicApiKey: string;
   anthropicModel: string;
+  geminiApiKey: string;
+  geminiModel: string;
   nodeEnv: string;
   googleCloudApiKey: string;
+  googleClientId: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPass: string;
+  smtpFrom: string;
+  smtpTo: string;
+  enableFinalAssessmentTestMode: boolean;
+  devTestAccountEmail: string;
 }
 
 function requireEnv(name: string): string {
@@ -36,10 +48,22 @@ const config: Config = {
   jwtExpiresIn: optionalEnv('JWT_EXPIRES_IN', '7d'),
   refreshTokenSecret: requireEnv('REFRESH_TOKEN_SECRET'),
   refreshTokenExpiresIn: optionalEnv('REFRESH_TOKEN_EXPIRES_IN', '30d'),
-  anthropicApiKey: requireEnv('ANTHROPIC_API_KEY'),
+  anthropicApiKey: optionalEnv('ANTHROPIC_API_KEY', ''),
   anthropicModel: optionalEnv('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
+  geminiApiKey: optionalEnv('GEMINI_API_KEY', ''),
+  geminiModel: optionalEnv('GEMINI_MODEL', 'gemini-2.5-flash'),
   nodeEnv: optionalEnv('NODE_ENV', 'development'),
   googleCloudApiKey: optionalEnv('GOOGLE_CLOUD_API_KEY', ''),
+  googleClientId: optionalEnv('GOOGLE_CLIENT_ID', ''),
+  smtpHost: optionalEnv('SMTP_HOST', 'smtp.gmail.com'),
+  smtpPort: parseInt(optionalEnv('SMTP_PORT', '465'), 10),
+  smtpSecure: optionalEnv('SMTP_SECURE', 'true') === 'true',
+  smtpUser: optionalEnv('SMTP_USER', ''),
+  smtpPass: optionalEnv('SMTP_PASS', ''),
+  smtpFrom: optionalEnv('SMTP_FROM', ''),
+  smtpTo: optionalEnv('SMTP_TO', ''),
+  enableFinalAssessmentTestMode: optionalEnv('ENABLE_FINAL_ASSESSMENT_TEST_MODE', 'false') === 'true',
+  devTestAccountEmail: optionalEnv('DEV_TEST_ACCOUNT_EMAIL', ''),
 };
 
 export default config;

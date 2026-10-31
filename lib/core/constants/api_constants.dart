@@ -4,7 +4,7 @@ class ApiConstants {
   ApiConstants._();
 
   static String get baseUrl {
-    return dotenv.env['API_BASE_URL'] ?? 'http://192.168.1.22:3000/api/v1';
+    return dotenv.env['API_BASE_URL'] ?? 'http://192.168.1.6:3000/api/v1';
   }
 
   static int get timeoutMs =>
@@ -17,6 +17,7 @@ class ApiConstants {
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
   static const String forgotPassword = '/auth/forgot-password';
+  static const String verifyOtp = '/auth/verify-otp';
   static const String resetPassword = '/auth/reset-password';
 
   // User endpoints
@@ -27,10 +28,31 @@ class ApiConstants {
   // Curriculum endpoints
   static const String curriculum = '/curriculum';
 
+  // Dashboard endpoint
+  static const String dashboard = '/dashboard';
+
   // Lesson endpoints
   static const String lessons = '/lessons';
   static const String lessonById = '/lessons/{id}';
   static const String lessonSubmit = '/lessons/{id}/submit';
+  static const String lessonToday = '/lessons/today';
+  static const String lessonEvaluateResponse = '/lessons/evaluate-response';
+  static const String lessonComplete = '/lessons/complete';
+  static const String lessonPlan = '/lessons/plan';
+  static const String lessonSetLevel = '/lessons/set-level';
+  static const String lessonDay = '/lessons/day/{day}';
+  static const String lessonProgress = '/lessons/progress';
+  static const String lessonAskDoubt = '/lessons/ask-doubt';
+
+  // Final Assessment endpoints
+  static const String finalAssessmentEligibility = '/final-assessment/eligibility';
+  static const String finalAssessmentStart = '/final-assessment/start';
+  static const String finalAssessmentSubmit = '/final-assessment/submit';
+  static const String finalAssessmentAttempts = '/final-assessment/attempts';
+
+  // Certificate endpoints
+  static const String certificateGenerate = '/certificate';
+  static const String certificateDownload = '/certificate/download/{certificateId}';
 
   // AI endpoints
   static const String aiChat = '/ai/chat';
@@ -42,7 +64,7 @@ class ApiConstants {
   static const String speechAnalyze = '/speech/analyze';
 
   // Progress endpoints
-  static const String progress = '/progress';
+  static const String progress = '/lessons/progress';
   static const String progressUpdate = '/progress/update';
   static const String progressStreak = '/progress/streak';
 

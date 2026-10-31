@@ -8,6 +8,8 @@ import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import lessonRoutes from './modules/lessons/lesson.routes';
+import finalAssessmentRoutes from './modules/final_assessment/final_assessment.routes';
+import certificateRoutes from './modules/certificate/certificate.routes';
 
 const app: Application = express();
 
@@ -45,6 +47,8 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
   });
 });
 
+import { lessonController } from './modules/lessons/lesson.controller';
+
 // ── API Routes (support both /api/v1 and root paths) ──
 app.use('/api/v1/auth', authRoutes);
 app.use('/auth', authRoutes);
@@ -57,6 +61,15 @@ app.use('/ai', aiRoutes);
 
 app.use('/api/v1/lessons', lessonRoutes);
 app.use('/lessons', lessonRoutes);
+
+app.use('/api/v1/final-assessment', finalAssessmentRoutes);
+app.use('/final-assessment', finalAssessmentRoutes);
+
+app.use('/api/v1/certificate', certificateRoutes);
+app.use('/certificate', certificateRoutes);
+
+app.get('/api/v1/dashboard', (req, res, next) => lessonController.getDashboard(req, res, next));
+app.get('/dashboard', (req, res, next) => lessonController.getDashboard(req, res, next));
 
 // ── 404 & Error Handling ────────────────────────────
 app.use(notFoundMiddleware);

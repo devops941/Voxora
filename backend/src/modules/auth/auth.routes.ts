@@ -19,13 +19,17 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-const googleAuthSchema = z.object({
-  email: z.string().email('Please enter a valid Google email address'),
-  name: z.string().min(1, 'Name is required'),
-  googleId: z.string().optional(),
-  avatarUrl: z.string().optional(),
-  idToken: z.string().optional(),
-});
+const googleAuthSchema = z
+  .object({
+    email: z.string().email('Please enter a valid Google email address').optional(),
+    name: z.string().optional(),
+    googleId: z.string().optional(),
+    avatarUrl: z.string().optional().nullable(),
+    idToken: z.string().optional(),
+  })
+  .refine((data) => (data.idToken && data.idToken.trim().length > 0) || (data.email && data.email.trim().length > 0), {
+    message: 'Google idToken or valid email is required',
+  });
 
 router.post('/register', validate(registerSchema), (req, res, next) =>
   authController.register(req, res, next)
@@ -47,8 +51,16 @@ router.post('/logout', (req, res) =>
   authController.logout(req, res)
 );
 
-router.post('/forgot-password', (req, res) =>
-  authController.forgotPassword(req, res)
+router.post('/forgot-password', (req, res, next) =>
+  authController.forgotPassword(req, res, next)
+);
+
+router.post('/verify-otp', (req, res, next) =>
+  authController.verifyOtp(req, res, next)
+);
+
+router.post('/reset-password', (req, res, next) =>
+  authController.resetPassword(req, res, next)
 );
 
 router.get('/me', authMiddleware, (req, res, next) =>

@@ -14,6 +14,7 @@ export interface IDailyLesson {
   expectedDurationMinutes: number;
   evaluationCriteria: string[];
   revisionTask?: string;
+  teachingContent?: any;
   status: 'pending' | 'in_progress' | 'completed';
   score?: number;
   completedAt?: Date;
@@ -63,6 +64,7 @@ const dailyLessonSchema = new Schema<IDailyLesson>(
     score: { type: Number, default: 0 },
     completedAt: { type: Date, default: null },
     learnerNotes: { type: String, default: '' },
+    teachingContent: { type: Schema.Types.Mixed, default: null },
   },
   { _id: true }
 );

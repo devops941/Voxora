@@ -142,6 +142,13 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: AppColors.textDisabledLight,
+            width: 1,
+          ),
+        ),
         labelStyle: AppTextStyles.inputLabel,
         hintStyle: AppTextStyles.inputHint,
         errorStyle: AppTextStyles.errorText,
@@ -390,6 +397,13 @@ class AppTheme {
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: AppColors.textDisabledDark,
+            width: 1,
+          ),
         ),
         labelStyle:
             AppTextStyles.inputLabel.copyWith(color: AppColors.textSecondaryDark),

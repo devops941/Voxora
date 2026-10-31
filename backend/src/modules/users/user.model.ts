@@ -8,6 +8,8 @@ export interface IUser extends Document {
   phone?: string;
   password?: string;
   avatarUrl?: string;
+  bio?: string;
+  location?: string;
   level: string;
   role: 'student' | 'admin';
   authProvider?: 'local' | 'google';
@@ -16,6 +18,8 @@ export interface IUser extends Document {
   streak: number;
   dailyGoalMinutes: number;
   lastActiveDate?: Date;
+  resetPasswordOtp?: string | null;
+  resetPasswordExpires?: Date | null;
   comparePassword(candidatePassword: string): Promise<boolean>;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +54,16 @@ const userSchema = new Schema<IUser>(
     avatarUrl: {
       type: String,
       default: null,
+    },
+    bio: {
+      type: String,
+      default: 'Better English • Bigger Dreams',
+      trim: true,
+    },
+    location: {
+      type: String,
+      default: 'Madurai, India',
+      trim: true,
     },
     authProvider: {
       type: String,
@@ -87,6 +101,16 @@ const userSchema = new Schema<IUser>(
       type: Date,
       default: null,
     },
+    resetPasswordOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -95,6 +119,8 @@ const userSchema = new Schema<IUser>(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret['id'] = ret['_id']?.toString();
         ret['avatar_url'] = ret['avatarUrl'];
+        ret['bio'] = ret['bio'] || 'Better English • Bigger Dreams';
+        ret['location'] = ret['location'] || 'Madurai, India';
         ret['phone_number'] = ret['phone'];
         ret['auth_provider'] = ret['authProvider'] || 'local';
         ret['google_id'] = ret['googleId'];

@@ -96,12 +96,55 @@ export class AuthController {
     });
   }
 
-  async forgotPassword(req: Request, res: Response): Promise<void> {
-    const { email } = req.body;
-    res.status(200).json({
-      success: true,
-      message: `Password reset instructions sent to ${email}`,
-    });
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== 'string') {
+        res.status(400).json({
+          success: false,
+          message: 'Please provide a valid email address',
+        });
+        return;
+      }
+      const result = await authService.forgotPassword(email);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) {
+        res.status(400).json({
+          success: false,
+          message: 'Email and 6-digit OTP code are required',
+        });
+        return;
+      }
+      const result = await authService.verifyOtp(email, otp);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, otp, newPassword } = req.body;
+      if (!email || !otp || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Email, OTP code, and new password are required',
+        });
+        return;
+      }
+      const result = await authService.resetPassword(email, otp, newPassword);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
   }
 
   async getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

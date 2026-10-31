@@ -102,11 +102,39 @@ class AuthProvider {
     return response.data ?? {};
   }
 
-  /// Sends a password-reset email.
+  /// Sends a password-reset email with a 6-digit OTP.
   Future<void> forgotPassword({required String email}) async {
     await _apiClient.post<void>(
       ApiConstants.forgotPassword,
       data: {'email': email},
+    );
+  }
+
+  /// Verifies the 6-digit OTP sent to user's email.
+  Future<Map<String, dynamic>> verifyOtp({
+    required String email,
+    required String otp,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiConstants.verifyOtp,
+      data: {'email': email, 'otp': otp},
+    );
+    return response.data ?? {};
+  }
+
+  /// Resets the user's password using the verified OTP.
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    await _apiClient.post<void>(
+      ApiConstants.resetPassword,
+      data: {
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      },
     );
   }
 
@@ -123,11 +151,15 @@ class AuthProvider {
     String? name,
     String? level,
     String? avatarUrl,
+    String? bio,
+    String? location,
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
     if (level != null) payload['level'] = level;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
+    if (bio != null) payload['bio'] = bio;
+    if (location != null) payload['location'] = location;
 
     final response = await _apiClient.patch<Map<String, dynamic>>(
       ApiConstants.userUpdate,

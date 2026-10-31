@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'package:voxora/core/constants/app_strings.dart';
+import 'package:voxora/core/routes/app_routes.dart';
 import 'package:voxora/core/theme/app_colors.dart';
 import 'package:voxora/core/theme/app_text_styles.dart';
 import 'package:voxora/data/repositories/auth_repository.dart';
@@ -18,7 +19,6 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
-  bool _isSent = false;
 
   @override
   void dispose() {
@@ -29,24 +29,47 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final email = _emailController.text.trim();
     setState(() => _isLoading = true);
+
     try {
       if (Get.isRegistered<AuthRepository>()) {
-        await Get.find<AuthRepository>().forgotPassword(_emailController.text.trim());
+        await Get.find<AuthRepository>().forgotPassword(email);
       } else {
         await Future.delayed(const Duration(milliseconds: 600));
       }
+
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isSent = true;
-      });
-    } catch (_) {
+      setState(() => _isLoading = false);
+
+      Get.snackbar(
+        'OTP Sent! 📩',
+        'A 6-digit verification code was sent to $email',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF16A34A),
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 3),
+      );
+
+      // Navigate to OTP Verification Screen
+      Get.toNamed(AppRoutes.verifyOtp, arguments: {'email': email});
+    } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isSent = true; // Still show success for privacy/security best practice
-      });
+      setState(() => _isLoading = false);
+
+      Get.snackbar(
+        'Notice',
+        'If that email is registered, an OTP has been sent. Proceeding to verification.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+      );
+
+      Get.toNamed(AppRoutes.verifyOtp, arguments: {'email': email});
     }
   }
 
@@ -60,15 +83,18 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     final titleFontSize = (size.width * 0.075).clamp(24.0, 30.0);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_rounded,
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+            color: isDark
+                ? AppColors.textPrimaryDark
+                : AppColors.textPrimaryLight,
           ),
           onPressed: () => Get.back(),
         ),
@@ -77,9 +103,15 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 12),
-          child: _isSent
-              ? _buildSuccessState(context, isDark, titleFontSize)
-              : _buildFormState(context, isDark, iconSize, titleFontSize, size),
+          child: AuthCard(
+            child: _buildFormState(
+              context,
+              isDark,
+              iconSize,
+              titleFontSize,
+              size,
+            ),
+          ),
         ),
       ),
     );
@@ -133,7 +165,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
           // Subtitle
           Text(
-            'Enter your registered email address and we will send you a link to reset your password.',
+            'Enter your registered email address. We will send you a 6-digit OTP code to verify and reset your password.',
             style: AppTextStyles.bodyMedium.copyWith(
               color: isDark
                   ? AppColors.textSecondaryDark
@@ -153,8 +185,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return AppStrings.validationRequired;
-              if (!GetUtils.isEmail(v.trim())) return AppStrings.validationInvalidEmail;
+              if (v == null || v.trim().isEmpty) {
+                return AppStrings.validationRequired;
+              }
+              if (!GetUtils.isEmail(v.trim())) {
+                return AppStrings.validationInvalidEmail;
+              }
               return null;
             },
             onFieldSubmitted: (_) => _submit(),
@@ -164,7 +200,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
           // Reset button
           AuthPrimaryButton(
-            label: 'Send Reset Link',
+            label: 'Send Verification OTP',
             onPressed: _submit,
             isLoading: _isLoading,
           ),
@@ -186,62 +222,6 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSuccessState(
-    BuildContext context,
-    bool isDark,
-    double titleFontSize,
-  ) {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.success.withValues(alpha: 0.15),
-          ),
-          child: const Icon(
-            Icons.mark_email_read_rounded,
-            size: 44,
-            color: AppColors.success,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Check Your Email',
-          style: AppTextStyles.headingMedium.copyWith(
-            color: isDark
-                ? AppColors.textPrimaryDark
-                : AppColors.textPrimaryLight,
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.w800,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'We have sent password reset instructions to\n${_emailController.text}',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondaryLight,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 36),
-        AuthPrimaryButton(
-          label: 'Back to Sign In',
-          onPressed: () => Get.back(),
-        ),
-      ],
     );
   }
 }

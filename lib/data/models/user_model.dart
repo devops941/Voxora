@@ -4,7 +4,11 @@ class UserModel {
   final String email;
   final String? phone;
   final String? avatarUrl;
+  final String? bio;
+  final String? location;
   final String level;
+  final int streak;
+  final int xp;
   final DateTime createdAt;
 
   const UserModel({
@@ -13,21 +17,31 @@ class UserModel {
     required this.email,
     this.phone,
     this.avatarUrl,
+    this.bio,
+    this.location,
     required this.level,
+    this.streak = 0,
+    this.xp = 0,
     required this.createdAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       phone: json['phone']?.toString() ?? json['phone_number']?.toString(),
-      avatarUrl: json['avatar_url']?.toString(),
+      avatarUrl: json['avatar_url']?.toString() ?? json['avatarUrl']?.toString(),
+      bio: json['bio']?.toString() ?? 'Better English • Bigger Dreams',
+      location: json['location']?.toString() ?? 'Madurai, India',
       level: json['level']?.toString() ?? 'Beginner',
+      streak: (json['streak'] as num?)?.toInt() ?? 0,
+      xp: (json['xp'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+          : (json['createdAt'] != null
+              ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+              : DateTime.now()),
     );
   }
 
@@ -39,7 +53,11 @@ class UserModel {
       'phone': phone,
       'phone_number': phone,
       'avatar_url': avatarUrl,
+      'bio': bio,
+      'location': location,
       'level': level,
+      'streak': streak,
+      'xp': xp,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -50,7 +68,11 @@ class UserModel {
     String? email,
     String? phone,
     String? avatarUrl,
+    String? bio,
+    String? location,
     String? level,
+    int? streak,
+    int? xp,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -59,14 +81,18 @@ class UserModel {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+      location: location ?? this.location,
       level: level ?? this.level,
+      streak: streak ?? this.streak,
+      xp: xp ?? this.xp,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
   String toString() =>
-      'UserModel(id: $id, name: $name, email: $email, phone: $phone, level: $level)';
+      'UserModel(id: $id, name: $name, email: $email, level: $level, streak: $streak, xp: $xp)';
 
   @override
   bool operator ==(Object other) =>

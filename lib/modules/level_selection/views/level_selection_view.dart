@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import 'package:voxora/core/constants/api_constants.dart';
 import 'package:voxora/core/routes/app_routes.dart';
+import 'package:voxora/core/storage/local_storage.dart';
 import 'package:voxora/core/theme/app_colors.dart';
 import 'package:voxora/data/repositories/auth_repository.dart';
 
@@ -188,15 +189,38 @@ class _LevelSelectionViewState extends State<LevelSelectionView>
             ? 'Intermediate'
             : 'Advanced';
 
+    String? token;
+    String? userId;
+    try {
+      if (Get.isRegistered<LocalStorage>()) {
+        final storage = Get.find<LocalStorage>();
+        token = await storage.getToken();
+        final user = await storage.getUser();
+        userId = user?.id;
+      }
+    } catch (_) {}
+
+    final Map<String, dynamic> requestData = {
+      'transcript': transcript,
+      'selectedLevel': levelName,
+      'durationSeconds': _recordSeconds > 0 ? _recordSeconds : 18,
+    };
+    if (userId != null && userId.isNotEmpty) {
+      requestData['userId'] = userId;
+    }
+
+    final Map<String, dynamic> headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
     try {
       final dio = Dio();
       final response = await dio.post(
         '${ApiConstants.baseUrl}/ai/assess-speech',
-        data: {
-          'transcript': transcript,
-          'selectedLevel': levelName,
-          'durationSeconds': _recordSeconds > 0 ? _recordSeconds : 18,
-        },
+        data: requestData,
+        options: Options(headers: headers),
       );
       if (response.statusCode == 200 && response.data['success'] == true) {
         _assessmentResult = response.data['data'] as Map<String, dynamic>;
@@ -916,238 +940,289 @@ class _LevelSelectionViewState extends State<LevelSelectionView>
                 : 'Advanced C1');
     final spokenTranscript = _assessmentResult?['transcript'] ?? _speechTranscript;
 
-    return SingleChildScrollView(
+    return Column(
       key: const ValueKey(3),
-      physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF22C55E).withValues(alpha: 0.15),
-            ),
-            child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 34),
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            'Your 90-Day Plan is Ready!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1B3B6F),
-              fontSize: 23,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Customized by MIRA AI based on your spoken evaluation ($levelBadge)',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-          ),
-
-          const SizedBox(height: 18),
-
-          // What You Spoke Bubble
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-              ),
-            ),
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 8),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Your Assessed Speech',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                    Text(
-                      '${_recordSeconds > 0 ? _recordSeconds : 18}s spoken',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                    ),
-                  ],
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                  ),
+                  child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 34),
                 ),
-                const SizedBox(height: 6),
+
+                const SizedBox(height: 12),
+
                 Text(
-                  '"$spokenTranscript"',
+                  'Your 90-Day Plan is Ready!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1E293B),
-                    height: 1.35,
+                    color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1B3B6F),
+                    fontSize: 23,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Speech Evaluation Scores Row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFBBF7D0),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildScoreChip('Fluency', '${scores['fluency'] ?? 82}%'),
-                Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
-                _buildScoreChip('Pronunciation', '${scores['pronunciation'] ?? 80}%'),
-                Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
-                _buildScoreChip('Grammar', '${scores['grammar'] ?? 84}%'),
-                Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
-                _buildScoreChip('Vocab', '${scores['vocabulary'] ?? 78}%'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // AI Speech Diagnosis (Strength & Focus Area)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? const Color(0xFF1E3A8A) : const Color(0xFFBFDBFE),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.auto_awesome, color: Color(0xFF2563EB), size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      'MIRA AI Speech Diagnosis',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('🌟 ', style: TextStyle(fontSize: 13)),
-                    Expanded(
-                      child: Text(
-                        'Strength: ${diagnosis['strength'] ?? 'Clear communicative tone'}',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1E293B),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('🎯 ', style: TextStyle(fontSize: 13)),
-                    Expanded(
-                      child: Text(
-                        'Focus Area: ${diagnosis['focusArea'] ?? 'Eliminating pauses & connective words'}',
+                Text(
+                  'Customized by MIRA AI based on your spoken evaluation ($levelBadge)',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                ),
+
+                const SizedBox(height: 18),
+
+                // What You Spoke Bubble
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Your Assessed Speech',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                          Text(
+                            '${_recordSeconds > 0 ? _recordSeconds : 18}s spoken',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '"$spokenTranscript"',
                         style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
                           color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1E293B),
+                          height: 1.35,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+
+                const SizedBox(height: 16),
+
+                // Speech Evaluation Scores Row
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFBBF7D0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildScoreChip('Fluency', '${scores['fluency'] ?? 82}%'),
+                      Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
+                      _buildScoreChip('Pronunciation', '${scores['pronunciation'] ?? 80}%'),
+                      Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
+                      _buildScoreChip('Grammar', '${scores['grammar'] ?? 84}%'),
+                      Container(width: 1, height: 26, color: const Color(0xFFCBD5E1)),
+                      _buildScoreChip('Vocab', '${scores['vocabulary'] ?? 78}%'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // AI Speech Diagnosis (Strength & Focus Area)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF1E3A8A) : const Color(0xFFBFDBFE),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: Color(0xFF2563EB), size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'MIRA AI Speech Diagnosis',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('🌟 ', style: TextStyle(fontSize: 13)),
+                          Expanded(
+                            child: Text(
+                              'Strength: ${diagnosis['strength'] ?? 'Clear communicative tone'}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('🎯 ', style: TextStyle(fontSize: 13)),
+                          Expanded(
+                            child: Text(
+                              'Focus Area: ${diagnosis['focusArea'] ?? 'Eliminating pauses & connective words'}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppColors.textPrimaryDark : const Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // 90-Day Roadmap Months (Dynamically generated)
+                ...scheduleList.map((m) {
+                  final monthMap = m as Map<String, dynamic>;
+                  final monthNumber = monthMap['month']?.toString() ?? '1';
+                  final daysRange = monthMap['daysRange']?.toString() ?? 'Days 1 – 30';
+                  final title = monthMap['title']?.toString() ?? 'Spoken English Growth';
+                  final desc = monthMap['desc']?.toString() ?? '';
+                  final colorHex = monthMap['colorHex']?.toString() ?? '#2563EB';
+                  final color = _parseColor(colorHex);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildMonthScheduleCard(
+                      monthNumber: monthNumber,
+                      daysRange: daysRange,
+                      title: title,
+                      desc: desc,
+                      color: color,
+                      badgeColor: color.withValues(alpha: 0.14),
+                      isDark: isDark,
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 16),
               ],
             ),
           ),
+        ),
 
-          const SizedBox(height: 18),
-
-          // 90-Day Roadmap Months (Dynamically generated)
-          ...scheduleList.map((m) {
-            final monthMap = m as Map<String, dynamic>;
-            final monthNumber = monthMap['month']?.toString() ?? '1';
-            final daysRange = monthMap['daysRange']?.toString() ?? 'Days 1 – 30';
-            final title = monthMap['title']?.toString() ?? 'Spoken English Growth';
-            final desc = monthMap['desc']?.toString() ?? '';
-            final colorHex = monthMap['colorHex']?.toString() ?? '#2563EB';
-            final color = _parseColor(colorHex);
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildMonthScheduleCard(
-                monthNumber: monthNumber,
-                daysRange: daysRange,
-                title: title,
-                desc: desc,
-                color: color,
-                badgeColor: color.withValues(alpha: 0.14),
-                isDark: isDark,
+        // ── Sticky Bottom CTA Bar with Safe Area ────────────────────
+        Container(
+          padding: EdgeInsets.fromLTRB(
+            hPadding,
+            12,
+            hPadding,
+            MediaQuery.of(context).padding.bottom > 0
+                ? MediaQuery.of(context).padding.bottom + 8
+                : 16,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
               ),
-            );
-          }),
-
-          const SizedBox(height: 16),
-
-          // Start Day 1 Button
-          SizedBox(
+            ],
+            border: Border(
+              top: BorderSide(
+                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                width: 1,
+              ),
+            ),
+          ),
+          child: SizedBox(
             width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _finishAndGoToDashboard,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            height: 54,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Text(
-                'Start Day 1 with MIRA 🚀',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.2,
+              child: ElevatedButton.icon(
+                onPressed: _finishAndGoToDashboard,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.rocket_launch_rounded, size: 20, color: Colors.white),
+                label: const Text(
+                  'Start Day 1 with MIRA 🚀',
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                    height: 1.25,
+                  ),
                 ),
               ),
             ),
           ),
-
-          const SizedBox(height: 20),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
