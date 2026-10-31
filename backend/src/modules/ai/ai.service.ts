@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import logger from '../../utils/logger';
 import { analyzeStudentDoubt } from './doubt_analyzer';
 import { Assessment, IAssessment } from '../assessments/assessment.model';
@@ -54,8 +55,10 @@ export interface SpeechAssessmentResult {
 export class AIService {
   private anthropic: Anthropic | null = null;
   private gemini: GoogleGenAI | null = null;
+  private groq: Groq | null = null;
   private claudeModel: string = 'claude-3-5-haiku-20241022';
   private geminiModel: string = 'gemini-2.5-flash';
+  private groqModel: string = 'llama-3.3-70b-versatile';
 
   constructor() {
     // 1. Initialize Claude (Primary Provider)
@@ -90,6 +93,20 @@ export class AIService {
       }
     } else {
       logger.warn('⚠️ Gemini API key not configured or placeholder.');
+    }
+
+    // 3. Initialize Groq (Free-tier Fallback Provider)
+    const groqKey = process.env.GROQ_API_KEY;
+    this.groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    if (groqKey && groqKey.length > 10 && !groqKey.includes('dummy') && !groqKey.includes('xxxx')) {
+      try {
+        this.groq = new Groq({ apiKey: groqKey });
+        logger.info(`🤖 [Fallback AI 2] Groq client initialized (Model: ${this.groqModel})`);
+      } catch (err: any) {
+        logger.warn(`Groq client init notice: ${err?.message || err}`);
+      }
+    } else {
+      logger.warn('⚠️ Groq API key not configured or placeholder.');
     }
   }
 
@@ -218,12 +235,51 @@ Return valid JSON ONLY with these exact keys:
       } catch (geminiErr: any) {
         const errorMsg = geminiErr?.message || String(geminiErr);
         logger.warn(
-          `⚠️ [Final Safety Net] Gemini assessment fallback failed: ${errorMsg.substring(0, 100)}. Routing to local speech engine...`
+          `⚠️ [Fallback 2 Triggered] Gemini assessment fallback failed: ${errorMsg.substring(0, 100)}. Routing to Groq fallback...`
         );
       }
     }
 
-    // Apply scores from AI provider (Claude or Gemini) if successfully parsed
+    // ── 3. GROQ FALLBACK: Free-tier LLM ───────────────────────────────────
+    if (!aiAssessment && this.groq) {
+      try {
+        const response = await this.groq.chat.completions.create({
+          model: this.groqModel,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Mira, a friendly AI English teacher. Return valid JSON only with keys: fluency (0-100), pronunciation (0-100), grammar (0-100), vocabulary (0-100), strength (string), focusArea (string), feedbackSummary (string).',
+            },
+            {
+              role: 'user',
+              content: `Evaluate this spoken response from a ${selectedLevel} English learner. Transcript: "${rawTranscript}". Duration: ${duration} seconds.`,
+            },
+          ],
+          max_tokens: 400,
+          temperature: 0.2,
+        });
+
+        const text = response.choices[0]?.message?.content?.trim();
+        if (text) {
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (typeof parsed.fluency === 'number' && typeof parsed.pronunciation === 'number') {
+              aiAssessment = parsed;
+              evaluationProvider = 'gemini'; // reuse provider label for client compatibility
+              logger.info(`✨ [Fallback AI 2: Groq] Evaluated speech assessment (${this.groqModel})`);
+            }
+          }
+        }
+      } catch (groqErr: any) {
+        const errorMsg = groqErr?.message || String(groqErr);
+        logger.warn(
+          `⚠️ [Final Safety Net] Groq assessment fallback failed: ${errorMsg.substring(0, 100)}. Routing to local speech engine...`
+        );
+      }
+    }
+
+    // Apply scores from AI provider (Claude, Gemini, or Groq) if successfully parsed
     if (aiAssessment) {
       fluencyScore = aiAssessment.fluency || fluencyScore;
       pronunciationScore = aiAssessment.pronunciation || pronunciationScore;
@@ -702,7 +758,8 @@ Return valid JSON ONLY with these exact keys:
         topic: params.topic,
       },
       this.anthropic,
-      this.gemini
+      this.gemini,
+      this.groq
     );
 
     return { answer: result.answer, provider: result.provider };

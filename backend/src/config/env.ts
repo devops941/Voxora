@@ -14,6 +14,8 @@ interface Config {
   anthropicModel: string;
   geminiApiKey: string;
   geminiModel: string;
+  groqApiKey: string;
+  groqModel: string;
   nodeEnv: string;
   googleCloudApiKey: string;
   googleClientId: string;
@@ -52,6 +54,8 @@ const config: Config = {
   anthropicModel: optionalEnv('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
   geminiApiKey: optionalEnv('GEMINI_API_KEY', ''),
   geminiModel: optionalEnv('GEMINI_MODEL', 'gemini-2.5-flash'),
+  groqApiKey: optionalEnv('GROQ_API_KEY', ''),
+  groqModel: optionalEnv('GROQ_MODEL', 'llama-3.3-70b-versatile'),
   nodeEnv: optionalEnv('NODE_ENV', 'development'),
   googleCloudApiKey: optionalEnv('GOOGLE_CLOUD_API_KEY', ''),
   googleClientId: optionalEnv('GOOGLE_CLIENT_ID', ''),

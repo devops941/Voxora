@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import logger from '../../utils/logger';
 
 interface DoubtParams {
@@ -24,7 +25,8 @@ export interface DoubtAnalysisResult {
 export async function analyzeStudentDoubt(
   params: DoubtParams,
   anthropicClient?: Anthropic | null,
-  geminiClient?: GoogleGenAI | null
+  geminiClient?: GoogleGenAI | null,
+  groqClient?: Groq | null
 ): Promise<DoubtAnalysisResult> {
   const rawQ = (params.userQuestion || '').trim();
   if (!rawQ) {
@@ -96,12 +98,45 @@ Keep your response concise (3-4 sentences total). Avoid complex jargon.`;
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       logger.warn(
-        `⚠️ [Final Safety Net] Gemini fallback failed: ${errorMsg.substring(0, 100)}. Routing to local linguistic engine...`
+        `⚠️ [Fallback 2 Triggered] Gemini fallback failed: ${errorMsg.substring(0, 100)}. Routing to Groq fallback...`
       );
     }
   }
 
-  // ── 3. FINAL SAFETY NET: Local Linguistic Engine ──────────────────────
+  // ── 3. GROQ FALLBACK: Free-tier LLM ──────────────────────────────────
+  if (groqClient) {
+    try {
+      const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+      const response = await groqClient.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are MIRA, an expert spoken English coach on the Voxora app. Answer student doubts in 2-4 concise, warm, practical sentences. Always include at least one clear everyday example sentence with a pronunciation/speaking tip.',
+          },
+          {
+            role: 'user',
+            content: `Student on Day ${params.day} (Topic: "${params.topic || 'Spoken English'}") asks: "${rawQ}". Explain clearly with examples.`,
+          },
+        ],
+        max_tokens: 350,
+        temperature: 0.3,
+      });
+
+      const text = response.choices[0]?.message?.content?.trim();
+      if (text) {
+        logger.info(`✨ [Fallback AI 2: Groq] Answered doubt using ${model}`);
+        return { answer: text, provider: 'gemini' }; // reuse label for client compatibility
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err);
+      logger.warn(
+        `⚠️ [Final Safety Net] Groq fallback failed: ${errorMsg.substring(0, 100)}. Routing to local linguistic engine...`
+      );
+    }
+  }
+
+  // ── 4. FINAL SAFETY NET: Local Linguistic Engine ──────────────────────
   logger.info(`🧠 [Safety Net: Local Engine] Analyzing doubt with Local Linguistic Engine: "${rawQ.substring(0, 45)}..."`);
   const offlineAnswer = generateIntelligentOfflineExplanation(rawQ, params.day, params.topic);
   return { answer: offlineAnswer, provider: 'local_engine' };

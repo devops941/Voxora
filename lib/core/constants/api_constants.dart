@@ -4,7 +4,7 @@ class ApiConstants {
   ApiConstants._();
 
   static String get baseUrl {
-    return dotenv.env['API_BASE_URL'] ?? 'http://192.168.1.6:3000/api/v1';
+    return dotenv.env['API_BASE_URL'] ?? 'https://voxora-iota-plum.vercel.app/api/v1';
   }
 
   static int get timeoutMs =>

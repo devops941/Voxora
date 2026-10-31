@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import config from './env';
 
 export const anthropicClient = config.anthropicApiKey && !config.anthropicApiKey.includes('dummy')
@@ -25,8 +26,13 @@ export const geminiClient = config.geminiApiKey && !config.geminiApiKey.includes
   ? buildGeminiClient(config.geminiApiKey)
   : null;
 
+export const groqClient = config.groqApiKey && !config.groqApiKey.includes('dummy')
+  ? new Groq({ apiKey: config.groqApiKey })
+  : null;
+
 export const CLAUDE_MODEL = config.anthropicModel || 'claude-3-5-haiku-20241022';
 export const GEMINI_MODEL = config.geminiModel || 'gemini-2.5-flash';
+export const GROQ_MODEL = config.groqModel || 'llama-3.3-70b-versatile';
 export const DEFAULT_MODEL = CLAUDE_MODEL;
 
 export const MAX_TOKENS = {
@@ -39,4 +45,5 @@ export const MAX_TOKENS = {
 export default {
   anthropic: anthropicClient,
   gemini: geminiClient,
+  groq: groqClient,
 };

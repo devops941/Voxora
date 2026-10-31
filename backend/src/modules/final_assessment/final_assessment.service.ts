@@ -4,7 +4,7 @@ import { AppError } from '../../types';
 import { User } from '../users/user.model';
 import { LearningPlan } from '../curriculum/plan.model';
 import { FinalAssessment, IAssessmentQuestion } from './final_assessment.model';
-import { anthropicClient, geminiClient, CLAUDE_MODEL, GEMINI_MODEL, MAX_TOKENS } from '../../config/ai.config';
+import { anthropicClient, geminiClient, groqClient, CLAUDE_MODEL, GEMINI_MODEL, GROQ_MODEL, MAX_TOKENS } from '../../config/ai.config';
 import {
   beginnerSyllabusThemes,
   intermediateSyllabusThemes,
@@ -136,7 +136,27 @@ Required JSON format:
         const parsed = this.parseAndValidateQuestions(text);
         if (parsed) return parsed;
       } catch (err) {
-        console.error('[FinalAssessment] Gemini generation failed:', err);
+        console.error('[FinalAssessment] Gemini generation failed, trying Groq:', err);
+      }
+    }
+
+    // Groq fallback (free tier, OpenAI-compatible)
+    if (groqClient) {
+      try {
+        const response = await groqClient.chat.completions.create({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: MAX_TOKENS.curriculum,
+          temperature: 0.3,
+        });
+        const text = response.choices[0]?.message?.content ?? '';
+        const parsed = this.parseAndValidateQuestions(text);
+        if (parsed) return parsed;
+      } catch (err) {
+        console.error('[FinalAssessment] Groq generation failed:', err);
       }
     }
 
