@@ -19,18 +19,18 @@ class _ProfileViewState extends State<ProfileView> {
   UserModel? _user;
   bool _isLoading = true;
 
-  // Real or benchmarked learner stats
-  int _daysActive = 28;
-  int _currentStreak = 7;
-  int _totalPoints = 2850;
-  String _goalLevel = 'Intermediate';
+  // Real learner stats (dynamically fetched from backend MongoDB)
+  int _daysActive = 0;
+  int _currentStreak = 0;
+  int _totalPoints = 0;
+  String _goalLevel = 'Beginner';
 
   // Learning progress scores
-  int _overallProgress = 78;
-  int _speakingScore = 85;
-  int _listeningScore = 72;
-  int _grammarScore = 80;
-  int _vocabularyScore = 76;
+  int _overallProgress = 0;
+  int _speakingScore = 0;
+  int _listeningScore = 0;
+  int _grammarScore = 0;
+  int _vocabularyScore = 0;
 
   @override
   void initState() {
@@ -69,12 +69,12 @@ class _ProfileViewState extends State<ProfileView> {
           final avgScores = progress?['averageScores'] as Map<String, dynamic>?;
 
           setState(() {
-            _daysActive = completed > 0 ? completed : (currentDay > 1 ? currentDay : 28);
-            _currentStreak = streak > 0 ? streak : 7;
-            _totalPoints = xp > 0 ? xp : 2850;
-            _goalLevel = level.isNotEmpty ? level : 'Intermediate';
+            _daysActive = completed > 0 ? completed : (currentDay > 1 ? currentDay - 1 : 0);
+            _currentStreak = streak;
+            _totalPoints = xp;
+            _goalLevel = level.isNotEmpty ? level : (_user?.level.isNotEmpty == true ? _user!.level : 'Beginner');
 
-            if (completionPct != null && completionPct > 0) {
+            if (completionPct != null) {
               _overallProgress = completionPct;
             }
 
@@ -85,10 +85,10 @@ class _ProfileViewState extends State<ProfileView> {
               final v = (avgScores['vocabulary'] as num?)?.toInt() ?? 0;
               final o = (avgScores['overall'] as num?)?.toInt() ?? 0;
 
-              if (f > 0) _speakingScore = f;
-              if (p > 0) _listeningScore = p;
-              if (g > 0) _grammarScore = g;
-              if (v > 0) _vocabularyScore = v;
+              _speakingScore = f;
+              _listeningScore = p;
+              _grammarScore = g;
+              _vocabularyScore = v;
               if (o > 0) _overallProgress = o;
             }
           });
@@ -254,14 +254,14 @@ class _ProfileViewState extends State<ProfileView> {
 
   // ── 2. Hero Profile Card ───────────────────────────────────────────────────
   Widget _buildHeroProfileCard(bool isDark) {
-    final userName = (_user?.name.isNotEmpty == true) ? _user!.name : 'Sharmila R';
+    final userName = (_user?.name.isNotEmpty == true) ? _user!.name : 'English Learner';
     final userBio = (_user?.bio?.isNotEmpty == true)
         ? _user!.bio!
         : 'Better English  •  Bigger Dreams';
     final userLocation = (_user?.location?.isNotEmpty == true)
         ? _user!.location!
-        : 'Madurai, India';
-    final level = _goalLevel.isNotEmpty ? _goalLevel : 'Intermediate';
+        : 'Voxora Learner';
+    final level = _goalLevel.isNotEmpty ? _goalLevel : (_user?.level.isNotEmpty == true ? _user!.level : 'Beginner');
 
     return Container(
       width: double.infinity,
@@ -350,6 +350,19 @@ class _ProfileViewState extends State<ProfileView> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (_user?.email.isNotEmpty == true) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _user!.email,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.grey.shade400 : const Color(0xFF6366F1),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 3),
                     Text(
                       userBio,
@@ -1019,31 +1032,33 @@ class _ProfileViewState extends State<ProfileView> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(9),
                       decoration: const BoxDecoration(
                         color: Color(0xFF2563EB),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.verified_rounded, color: Colors.white, size: 24),
+                      child: const Icon(Icons.verified_rounded, color: Colors.white, size: 22),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 2,
                             children: [
                               Text(
                                 '$_goalLevel Track',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   color: isDark ? Colors.white : const Color(0xFF1E3A8A),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF2563EB).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
@@ -1059,17 +1074,20 @@ class _ProfileViewState extends State<ProfileView> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           Text(
                             'Active Voice Calibration • Day $_daysActive of 90',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: isDark ? Colors.grey.shade300 : const Color(0xFF475569),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '$_overallProgress%',
                       style: const TextStyle(
@@ -1133,7 +1151,7 @@ class _ProfileViewState extends State<ProfileView> {
               ),
               const SizedBox(height: 20),
 
-              // Retake Button
+              // Got it Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -1144,14 +1162,11 @@ class _ProfileViewState extends State<ProfileView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Get.toNamed(AppRoutes.levelSelection);
-                  },
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.check_circle_rounded, size: 20),
                   label: const Text(
-                    'Retake Speech Calibration',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    'Got it',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -1170,7 +1185,7 @@ class _ProfileViewState extends State<ProfileView> {
     required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14),
@@ -1181,27 +1196,31 @@ class _ProfileViewState extends State<ProfileView> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 17),
+            child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   '$value%',

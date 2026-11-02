@@ -4,12 +4,15 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
+import { authMiddleware } from './middleware/auth.middleware';
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import lessonRoutes from './modules/lessons/lesson.routes';
+import curriculumRoutes from './modules/curriculum/curriculum.routes';
 import finalAssessmentRoutes from './modules/final_assessment/final_assessment.routes';
 import certificateRoutes from './modules/certificate/certificate.routes';
+import { lessonController } from './modules/lessons/lesson.controller';
 
 const app: Application = express();
 
@@ -47,8 +50,6 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
   });
 });
 
-import { lessonController } from './modules/lessons/lesson.controller';
-
 // ── API Routes (support both /api/v1 and root paths) ──
 app.use('/api/v1/auth', authRoutes);
 app.use('/auth', authRoutes);
@@ -59,6 +60,9 @@ app.use('/users', userRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/ai', aiRoutes);
 
+app.use('/api/v1/curriculum', curriculumRoutes);
+app.use('/curriculum', curriculumRoutes);
+
 app.use('/api/v1/lessons', lessonRoutes);
 app.use('/lessons', lessonRoutes);
 
@@ -68,8 +72,8 @@ app.use('/final-assessment', finalAssessmentRoutes);
 app.use('/api/v1/certificate', certificateRoutes);
 app.use('/certificate', certificateRoutes);
 
-app.get('/api/v1/dashboard', (req, res, next) => lessonController.getDashboard(req, res, next));
-app.get('/dashboard', (req, res, next) => lessonController.getDashboard(req, res, next));
+app.get('/api/v1/dashboard', authMiddleware, (req, res, next) => lessonController.getDashboard(req, res, next));
+app.get('/dashboard', authMiddleware, (req, res, next) => lessonController.getDashboard(req, res, next));
 
 // ── 404 & Error Handling ────────────────────────────
 app.use(notFoundMiddleware);

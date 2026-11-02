@@ -1,4 +1,5 @@
 import { OAuth2Client } from 'google-auth-library';
+import crypto from 'crypto';
 import { User, IUser } from '../users/user.model';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../utils/jwt.utils';
 import { AppError } from '../../types';
@@ -230,11 +231,11 @@ export class AuthService {
   }
 
   /**
-   * Generates a 6-digit OTP and dispatches it via SMTP email for password reset.
+   * Generates a cryptographically secure 6-digit OTP, stores hashed representation, and dispatches via SMTP email.
    */
   async forgotPassword(rawEmail: string): Promise<{ success: boolean; message: string }> {
     const email = rawEmail.trim().toLowerCase();
-    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires');
+    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires +resetPasswordAttempts');
 
     if (!user) {
       logger.info(`Password reset requested for non-existent email: ${email}`);
@@ -244,21 +245,24 @@ export class AuthService {
       };
     }
 
-    // Generate secure 6-digit numeric OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate cryptographically secure 6-digit numeric OTP
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    user.resetPasswordOtp = otp;
+    // Store hashed OTP with 10 minute expiry and reset attempt counter
+    user.resetPasswordOtp = hashedOtp;
     user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.resetPasswordAttempts = 0;
     await user.save();
 
-    // Send styled OTP email via configured SMTP
+    // Send styled OTP email via configured SMTP (plaintext code in email only)
     await emailService.sendPasswordResetOtpEmail(
       user.email,
       user.name || 'Voxora Learner',
       otp
     );
 
-    logger.info(`🔐 Password reset 6-digit OTP generated and dispatched for user: ${user.email}`);
+    logger.info(`🔐 Password reset 6-digit OTP securely generated, hashed, and dispatched for: ${user.email}`);
 
     return {
       success: true,
@@ -267,30 +271,50 @@ export class AuthService {
   }
 
   /**
-   * Verifies that the submitted 6-digit OTP matches and is not expired.
+   * Verifies submitted 6-digit OTP against cryptographic hash, with expiry and rate-limiting attempt checks.
    */
   async verifyOtp(rawEmail: string, rawOtp: string): Promise<{ success: boolean; message: string }> {
     const email = rawEmail.trim().toLowerCase();
     const otp = rawOtp.trim();
 
-    if (!otp || otp.length < 4) {
+    if (!otp || otp.length !== 6 || !/^\d{6}$/.test(otp)) {
       throw new AppError('Please enter a valid 6-digit OTP code', 400);
     }
 
-    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires');
+    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires +resetPasswordAttempts');
     if (!user || !user.resetPasswordOtp || !user.resetPasswordExpires) {
       throw new AppError('No active password reset request found for this email', 400);
     }
 
     if (user.resetPasswordExpires < new Date()) {
+      user.resetPasswordOtp = null;
+      user.resetPasswordExpires = null;
+      user.resetPasswordAttempts = 0;
+      await user.save();
       throw new AppError('The verification code has expired. Please request a new one.', 400);
     }
 
-    if (user.resetPasswordOtp !== otp) {
-      throw new AppError('Incorrect verification code. Please check your email and try again.', 400);
+    const attempts = user.resetPasswordAttempts || 0;
+    if (attempts >= 5) {
+      user.resetPasswordOtp = null;
+      user.resetPasswordExpires = null;
+      user.resetPasswordAttempts = 0;
+      await user.save();
+      throw new AppError('Maximum verification attempts exceeded. Please request a new code.', 429);
     }
 
-    logger.info(`✅ OTP verified successfully for user: ${email}`);
+    const hashedInput = crypto.createHash('sha256').update(otp).digest('hex');
+    if (user.resetPasswordOtp !== hashedInput) {
+      user.resetPasswordAttempts = attempts + 1;
+      await user.save();
+      const remaining = 5 - (attempts + 1);
+      throw new AppError(
+        `Incorrect verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+        400
+      );
+    }
+
+    logger.info(`✅ Cryptographic OTP verified successfully for user: ${email}`);
 
     return {
       success: true,
@@ -299,7 +323,7 @@ export class AuthService {
   }
 
   /**
-   * Resets the user's password once the OTP has been verified.
+   * Resets the user's password once verified, preventing replay and OTP reuse.
    */
   async resetPassword(
     rawEmail: string,
@@ -314,26 +338,34 @@ export class AuthService {
       throw new AppError('Password must be at least 6 characters long', 400);
     }
 
-    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires +password');
+    const user = await User.findOne({ email }).select('+resetPasswordOtp +resetPasswordExpires +resetPasswordAttempts +password');
     if (!user || !user.resetPasswordOtp || !user.resetPasswordExpires) {
       throw new AppError('Invalid or expired password reset session', 400);
     }
 
     if (user.resetPasswordExpires < new Date()) {
+      user.resetPasswordOtp = null;
+      user.resetPasswordExpires = null;
+      user.resetPasswordAttempts = 0;
+      await user.save();
       throw new AppError('The verification code has expired. Please request a new one.', 400);
     }
 
-    if (user.resetPasswordOtp !== otp) {
+    const hashedInput = crypto.createHash('sha256').update(otp).digest('hex');
+    if (user.resetPasswordOtp !== hashedInput) {
       throw new AppError('Invalid verification code', 400);
     }
 
     // Update password (pre-save hook will hash it with bcrypt)
     user.password = newPassword;
+
+    // PREVENT OTP REUSE: Immediately invalidate reset credentials
     user.resetPasswordOtp = null;
     user.resetPasswordExpires = null;
+    user.resetPasswordAttempts = 0;
     await user.save();
 
-    logger.info(`🎉 Password successfully updated for user: ${email}`);
+    logger.info(`🎉 Password successfully updated and OTP invalidated for: ${email}`);
 
     return {
       success: true,

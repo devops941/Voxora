@@ -20,6 +20,15 @@ export interface IUser extends Document {
   lastActiveDate?: Date;
   resetPasswordOtp?: string | null;
   resetPasswordExpires?: Date | null;
+  resetPasswordAttempts?: number;
+  preferences?: {
+    dailyReminders?: boolean;
+    reminderTime?: string;
+    weeklyReport?: boolean;
+    speechSpeed?: string;
+    enableTamilTranslation?: boolean;
+    autoPlayAudio?: boolean;
+  };
   comparePassword(candidatePassword: string): Promise<boolean>;
   createdAt: Date;
   updatedAt: Date;
@@ -111,6 +120,22 @@ const userSchema = new Schema<IUser>(
       default: null,
       select: false,
     },
+    resetPasswordAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    preferences: {
+      type: Schema.Types.Mixed,
+      default: {
+        dailyReminders: true,
+        reminderTime: '20:00',
+        weeklyReport: true,
+        speechSpeed: 'normal',
+        enableTamilTranslation: true,
+        autoPlayAudio: true,
+      },
+    },
   },
   {
     timestamps: true,
@@ -119,8 +144,8 @@ const userSchema = new Schema<IUser>(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret['id'] = ret['_id']?.toString();
         ret['avatar_url'] = ret['avatarUrl'];
-        ret['bio'] = ret['bio'] || 'Better English • Bigger Dreams';
-        ret['location'] = ret['location'] || 'Madurai, India';
+        ret['bio'] = ret['bio'] || '';
+        ret['location'] = ret['location'] || '';
         ret['phone_number'] = ret['phone'];
         ret['auth_provider'] = ret['authProvider'] || 'local';
         ret['google_id'] = ret['googleId'];
@@ -128,6 +153,9 @@ const userSchema = new Schema<IUser>(
         delete ret['_id'];
         delete ret['__v'];
         delete ret['password'];
+        delete ret['resetPasswordOtp'];
+        delete ret['resetPasswordExpires'];
+        delete ret['resetPasswordAttempts'];
         return ret;
       },
     },

@@ -25,16 +25,20 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res, next) => {
   }
 });
 
-// PATCH /api/v1/users/me
-router.patch('/me', authMiddleware, async (req: AuthRequest, res, next) => {
+const updateUserHandler = async (req: AuthRequest, res: any, next: any) => {
   try {
-    const { name, level, avatar_url, bio, location } = req.body;
+    const { name, level, avatar_url, avatarUrl, bio, location, preferences, dailyGoalMinutes } = req.body;
     const updates: Record<string, unknown> = {};
-    if (name) updates.name = name;
-    if (level) updates.level = level;
+    if (name !== undefined) updates.name = String(name).trim();
+    if (level !== undefined) updates.level = level;
     if (avatar_url !== undefined) updates.avatarUrl = avatar_url;
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
     if (bio !== undefined) updates.bio = bio;
     if (location !== undefined) updates.location = location;
+    if (dailyGoalMinutes !== undefined) updates.dailyGoalMinutes = Number(dailyGoalMinutes);
+    if (preferences !== undefined && typeof preferences === 'object') {
+      updates.preferences = preferences;
+    }
 
     const user = await User.findByIdAndUpdate(req.user!.id, updates, { new: true });
     if (!user) {
@@ -64,6 +68,10 @@ router.patch('/me', authMiddleware, async (req: AuthRequest, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+// PATCH /api/v1/users/me & PUT /api/v1/users/me
+router.patch('/me', authMiddleware, updateUserHandler);
+router.put('/me', authMiddleware, updateUserHandler);
 
 export default router;

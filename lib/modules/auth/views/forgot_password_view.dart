@@ -33,11 +33,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     setState(() => _isLoading = true);
 
     try {
-      if (Get.isRegistered<AuthRepository>()) {
-        await Get.find<AuthRepository>().forgotPassword(email);
-      } else {
-        await Future.delayed(const Duration(milliseconds: 600));
-      }
+      await Get.find<AuthRepository>().forgotPassword(email);
 
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -1,10 +1,30 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConstants {
   ApiConstants._();
 
+  /// Deployed production backend (verified Vercel deployment)
+  static const String productionBaseUrl = 'https://voxora-iota-plum.vercel.app/api/v1';
+
+  /// Default local development backend (Android emulator: 10.0.2.2, desktop/web: localhost)
+  static const String developmentBaseUrl = 'http://10.0.2.2:3000/api/v1';
+
+  /// Centralized API base URL resolver.
+  /// Uses configured API_BASE_URL from .env if present.
+  /// Defaults to productionBaseUrl in release mode, and developmentBaseUrl otherwise.
   static String get baseUrl {
-    return dotenv.env['API_BASE_URL'] ?? 'https://voxora-iota-plum.vercel.app/api/v1';
+    final configured = dotenv.env['API_BASE_URL']?.trim();
+
+    if (configured != null && configured.isNotEmpty) {
+      return configured;
+    }
+
+    if (kReleaseMode) {
+      return productionBaseUrl;
+    }
+
+    return developmentBaseUrl;
   }
 
   static int get timeoutMs =>

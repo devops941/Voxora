@@ -10,6 +10,8 @@ class UserModel {
   final int streak;
   final int xp;
   final DateTime createdAt;
+  final String authProvider;
+  final int dailyGoalMinutes;
 
   const UserModel({
     required this.id,
@@ -23,6 +25,8 @@ class UserModel {
     this.streak = 0,
     this.xp = 0,
     required this.createdAt,
+    this.authProvider = 'email',
+    this.dailyGoalMinutes = 15,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -33,7 +37,7 @@ class UserModel {
       phone: json['phone']?.toString() ?? json['phone_number']?.toString(),
       avatarUrl: json['avatar_url']?.toString() ?? json['avatarUrl']?.toString(),
       bio: json['bio']?.toString() ?? 'Better English • Bigger Dreams',
-      location: json['location']?.toString() ?? 'Madurai, India',
+      location: json['location']?.toString() ?? '',
       level: json['level']?.toString() ?? 'Beginner',
       streak: (json['streak'] as num?)?.toInt() ?? 0,
       xp: (json['xp'] as num?)?.toInt() ?? 0,
@@ -42,6 +46,10 @@ class UserModel {
           : (json['createdAt'] != null
               ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
               : DateTime.now()),
+      authProvider: json['auth_provider']?.toString() ?? json['authProvider']?.toString() ?? 'email',
+      dailyGoalMinutes: (json['preferences']?['dailyGoalMinutes'] as num?)?.toInt() ??
+          (json['dailyGoalMinutes'] as num?)?.toInt() ??
+          15,
     );
   }
 
@@ -59,6 +67,8 @@ class UserModel {
       'streak': streak,
       'xp': xp,
       'created_at': createdAt.toIso8601String(),
+      'auth_provider': authProvider,
+      'daily_goal_minutes': dailyGoalMinutes,
     };
   }
 
@@ -74,6 +84,8 @@ class UserModel {
     int? streak,
     int? xp,
     DateTime? createdAt,
+    String? authProvider,
+    int? dailyGoalMinutes,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -87,6 +99,8 @@ class UserModel {
       streak: streak ?? this.streak,
       xp: xp ?? this.xp,
       createdAt: createdAt ?? this.createdAt,
+      authProvider: authProvider ?? this.authProvider,
+      dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
     );
   }
 

@@ -151,7 +151,7 @@ class _LevelSelectionViewState extends State<LevelSelectionView>
 
   String _getDefaultTranscriptForLevel() {
     if (_selectedLevel == LearningLevel.beginner) {
-      return 'Hello MIRA, my name is Sharmila. I am from Chennai. I love reading books and I want to speak English fluently with confidence.';
+      return 'Hello MIRA, I am an English learner. I love reading and practicing daily, and I want to speak English fluently with confidence.';
     } else if (_selectedLevel == LearningLevel.intermediate) {
       return 'I have been working as a professional for two years. I can manage everyday conversations, but I want to speak without hesitating in meetings.';
     } else {
@@ -618,7 +618,7 @@ class _LevelSelectionViewState extends State<LevelSelectionView>
             : 'Share your perspective on how artificial intelligence and global careers are transforming modern communication.';
 
     final sampleSpeech = _selectedLevel == LearningLevel.beginner
-        ? 'Hello MIRA, my name is Sharmila. I am from Chennai. I love reading books and I want to speak English fluently with confidence.'
+        ? 'Hello MIRA, I am an English learner. I love reading and practicing daily, and I want to speak English fluently with confidence.'
         : _selectedLevel == LearningLevel.intermediate
             ? 'I have been working as a professional for two years. I can manage everyday conversations, but I want to speak without hesitating in meetings.'
             : 'In my perspective, effective communication in English requires not only vocabulary, but also proper intonation and executive confidence.';

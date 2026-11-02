@@ -43,11 +43,19 @@ class _DashboardViewState extends State<DashboardView> {
   String _todayTopic = 'Daily Spoken English';
   String _level = 'Beginner';
   int _completedDays = 0;
+  int _currentPhase = 1;
+  String _phaseTitle = 'Phase 1: Foundation & Daily Routines';
+  List<Map<String, dynamic>> _recentActivity = [];
+  List<String> _suggestions = [];
+  int _overallProgress = 0;
+  Map<String, dynamic>? _avgScores;
 
   int _currentWordIndex = 0;
   final Set<int> _bookmarkedWordIndices = {};
 
-  static const List<DailyWordItem> _dailyWords = [
+  List<DailyWordItem> _dailyWords = _defaultDailyWords;
+
+  static const List<DailyWordItem> _defaultDailyWords = [
     DailyWordItem(
       word: 'Articulate',
       phonetic: '/ɑːrˈtɪk.jə.lət/',
@@ -496,6 +504,13 @@ class _DashboardViewState extends State<DashboardView> {
             if (dashData['level'] != null) {
               _level = dashData['level'].toString();
             }
+            if (dashData['currentPhase'] != null) {
+              _currentPhase = (dashData['currentPhase'] as num).toInt();
+            }
+            if (dashData['phaseTitle'] != null) {
+              _phaseTitle = dashData['phaseTitle'].toString();
+            }
+
             final todayLesson = dashData['todayLesson'] as Map<String, dynamic>?;
             if (todayLesson != null && todayLesson['topic'] != null) {
               _todayTopic = todayLesson['topic'].toString();
@@ -503,6 +518,48 @@ class _DashboardViewState extends State<DashboardView> {
             final userData = dashData['user'] as Map<String, dynamic>?;
             if (userData != null) {
               _user = UserModel.fromJson(userData);
+            }
+
+            // Extract personalized vocabulary of the day from backend MongoDB
+            if (dashData['vocabularyOfDay'] is List && (dashData['vocabularyOfDay'] as List).isNotEmpty) {
+              final rawWords = dashData['vocabularyOfDay'] as List;
+              final List<DailyWordItem> dynamicWords = [];
+              for (final item in rawWords) {
+                if (item is Map) {
+                  dynamicWords.add(DailyWordItem(
+                    word: item['word']?.toString() ?? '',
+                    phonetic: item['phonetic']?.toString() ?? '',
+                    partOfSpeech: item['partOfSpeech']?.toString() ?? '',
+                    meaning: item['meaning']?.toString() ?? '',
+                    tamilMeaning: item['tamilMeaning']?.toString() ?? '',
+                    exampleSentence: item['exampleSentence']?.toString() ?? '',
+                    dailyTip: item['dailyTip']?.toString() ?? '',
+                  ));
+                }
+              }
+              if (dynamicWords.isNotEmpty) {
+                _dailyWords = dynamicWords;
+                _currentWordIndex = _currentWordIndex % _dailyWords.length;
+              }
+            }
+
+            // Extract real recent learning activity from MongoDB
+            if (dashData['recentActivity'] is List) {
+              _recentActivity = List<Map<String, dynamic>>.from(
+                (dashData['recentActivity'] as List).whereType<Map<String, dynamic>>(),
+              );
+            }
+
+            // Extract personalized suggestions
+            if (dashData['personalizedSuggestions'] is List) {
+              _suggestions = List<String>.from(dashData['personalizedSuggestions']);
+            }
+
+            // Extract real assessment & progress scores
+            if (dashData['progress'] is Map) {
+              final prog = Map<String, dynamic>.from(dashData['progress']);
+              _overallProgress = (prog['completionPercentage'] as num?)?.toInt() ?? _overallProgress;
+              _avgScores = prog['averageScores'] as Map<String, dynamic>?;
             }
           });
           return;
@@ -696,13 +753,17 @@ class _DashboardViewState extends State<DashboardView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Curriculum Modules',
-                    style: AppTextStyles.headingSmall.copyWith(
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Curriculum Modules',
+                      style: AppTextStyles.headingSmall.copyWith(
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : AppColors.textPrimaryLight,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   TextButton(
@@ -776,6 +837,16 @@ class _DashboardViewState extends State<DashboardView> {
 
               // ── Final Assessment CTA ──────────────────────────────
               _buildFinalAssessmentCard(context, isDark),
+
+              const SizedBox(height: 18),
+
+              // ── Personalized Improvement Suggestions ─────────────
+              _buildImprovementSuggestionsCard(context, isDark),
+
+              const SizedBox(height: 18),
+
+              // ── Recent Learning Activity ──────────────────────────
+              _buildRecentActivityCard(context, isDark),
 
               const SizedBox(height: 20),
             ],
@@ -1263,13 +1334,15 @@ class _DashboardViewState extends State<DashboardView> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              '${(pct * 100).round()}% curriculum completed',
+                              'Phase $_currentPhase • $_phaseTitle • ${(pct * 100).round()}% completed',
                               style: AppTextStyles.caption.copyWith(
                                 color: isDark
                                     ? AppColors.textSecondaryDark
                                     : AppColors.textSecondaryLight,
                                 fontSize: 12,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -1278,9 +1351,26 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Row(
+                Row(
                   children: [
-                    Text(
+                    if (_avgScores != null && _avgScores!['overall'] != null)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${_avgScores!['overall']}%',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    const Text(
                       'Analytics',
                       style: TextStyle(
                         color: AppColors.primary,
@@ -1288,7 +1378,7 @@ class _DashboardViewState extends State<DashboardView> {
                         fontSize: 13,
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
                   ],
                 ),
               ],
@@ -1604,6 +1694,250 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImprovementSuggestionsCard(BuildContext context, bool isDark) {
+    final suggestions = _suggestions.isNotEmpty
+        ? _suggestions
+        : [
+            'Practice speaking aloud for 15 minutes daily with MIRA.',
+            'Focus on natural transitions and steady breathing cadence.',
+            'Review today\'s vocabulary cards and use each in everyday conversations.',
+          ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Improvement Suggestions',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'Tailored for $_level Level',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...suggestions.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Color(0xFF10B981),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: isDark ? Colors.grey.shade300 : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityCard(BuildContext context, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Recent Learning Activity',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_completedDays/90 Days',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_recentActivity.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: Text(
+                  'No lessons completed yet.\nStart Day $_currentDay to see your speaking activity here!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._recentActivity.take(4).map(
+              (act) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'D${act['day'] ?? 1}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            act['topic']?.toString() ?? 'Daily Practice',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Completed • Score: ${act['overallScore'] ?? 85}%',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${act['overallScore'] ?? 85}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

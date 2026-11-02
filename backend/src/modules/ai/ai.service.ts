@@ -1,5 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenAI } from '@google/genai';
 import logger from '../../utils/logger';
 import { analyzeStudentDoubt } from './doubt_analyzer';
 import { Assessment, IAssessment } from '../assessments/assessment.model';
@@ -10,6 +8,7 @@ import { evaluateSpokenSubmission } from './speech_evaluator';
 import { LessonAttempt } from '../lessons/lesson_attempt.model';
 import { User } from '../users/user.model';
 import mongoose from 'mongoose';
+import { aiProviderManager } from '../../services/ai/AIProviderManager';
 
 export interface SpeechAssessmentDTO {
   transcript: string;
@@ -52,45 +51,8 @@ export interface SpeechAssessmentResult {
 }
 
 export class AIService {
-  private anthropic: Anthropic | null = null;
-  private gemini: GoogleGenAI | null = null;
-  private claudeModel: string = 'claude-3-5-haiku-20241022';
-  private geminiModel: string = 'gemini-2.5-flash';
-
   constructor() {
-    // 1. Initialize Claude (Primary Provider)
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    this.claudeModel = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
-    if (anthropicKey && anthropicKey.length > 10 && !anthropicKey.includes('dummy') && !anthropicKey.includes('xxxx')) {
-      try {
-        this.anthropic = new Anthropic({
-          apiKey: anthropicKey,
-          timeout: 5000,
-        });
-        logger.info(`🤖 [Primary AI] Anthropic Claude client initialized (Model: ${this.claudeModel})`);
-      } catch (err: any) {
-        logger.warn(`Anthropic client init notice: ${err?.message || err}`);
-      }
-    } else {
-      logger.warn('⚠️ Anthropic API key not configured or placeholder.');
-    }
-
-    // 2. Initialize Gemini (Automatic Fallback Provider)
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    this.geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-    if (geminiKey && geminiKey.length > 10 && !geminiKey.includes('dummy') && !geminiKey.includes('xxxx')) {
-      try {
-        // AQ... keys are the new Google AI Studio format — use Bearer auth instead of x-goog-api-key
-        this.gemini = geminiKey.startsWith('AQ')
-          ? new GoogleGenAI({ httpOptions: { headers: { 'Authorization': `Bearer ${geminiKey}` } } })
-          : new GoogleGenAI({ apiKey: geminiKey });
-        logger.info(`🤖 [Fallback AI] Google Gemini client initialized (Model: ${this.geminiModel})`);
-      } catch (err: any) {
-        logger.warn(`Gemini client init notice: ${err?.message || err}`);
-      }
-    } else {
-      logger.warn('⚠️ Gemini API key not configured or placeholder.');
-    }
+    logger.info('[AIService] Initialized with centralized AIProviderManager');
   }
 
   /**
@@ -133,97 +95,36 @@ export class AIService {
     pronunciationScore = Math.min(95, Math.max(72, 80 + (wordCount > 15 ? 5 : -4)));
     grammarScore = Math.min(94, Math.max(70, 78 + (rawTranscript.includes('because') || rawTranscript.includes('and') ? 4 : 0)));
 
-    // Attempt evaluation with Provider Chain: Claude (Primary) -> Gemini (Fallback) -> Local Engine
+    // Attempt evaluation with Centralized AI Provider Manager: Claude (Primary) -> Local Engine (Fallback)
     let aiAssessment: any = null;
-    let evaluationProvider: 'claude' | 'gemini' | 'local_engine' = 'local_engine';
+    let evaluationProvider: 'claude' | 'local_engine' = 'local_engine';
 
-    // ── 1. PRIMARY: Anthropic Claude ──────────────────────────────────
-    if (this.anthropic) {
-      try {
-        const response = await this.anthropic.messages.create({
-          model: this.claudeModel,
-          max_tokens: 400,
-          system:
-            'You are Mira, a friendly AI English teacher. Return valid JSON only with keys: fluency (0-100), pronunciation (0-100), grammar (0-100), vocabulary (0-100), strength (string), focusArea (string), feedbackSummary (string).',
-          messages: [
-            {
-              role: 'user',
-              content: `Evaluate this spoken response from a ${selectedLevel} English learner. Transcript: "${rawTranscript}". Duration: ${duration} seconds.`,
-            },
-          ],
-        });
+    try {
+      const feedbackResponse = await aiProviderManager.getFeedback({
+        transcript: rawTranscript,
+        topic: `Initial Assessment (${selectedLevel})`,
+        durationSeconds: duration,
+      });
 
-        const content = response.content?.[0];
-        if (content && content.type === 'text') {
-          const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (typeof parsed.fluency === 'number' && typeof parsed.pronunciation === 'number') {
-              aiAssessment = parsed;
-              evaluationProvider = 'claude';
-              logger.info(`✨ [Primary AI: Claude] Evaluated speech assessment (${this.claudeModel})`);
-            }
-          }
-        }
-      } catch (claudeErr: any) {
-        const statusCode = claudeErr?.status || claudeErr?.statusCode || 'UNKNOWN';
-        const errorMsg = claudeErr?.message || String(claudeErr);
-        logger.warn(
-          `⚠️ [Fallback Triggered] Claude assessment failed (${statusCode}: ${errorMsg.substring(0, 100)}). Routing to Gemini fallback...`
-        );
+      if (feedbackResponse.success && feedbackResponse.data) {
+        const d = feedbackResponse.data;
+        aiAssessment = {
+          fluency: d.fluency.score,
+          pronunciation: d.pronunciation.score,
+          grammar: d.grammar.score,
+          vocabulary: d.vocabulary.score,
+          strength: d.strengths?.[0] || 'Good communicative intent and clear articulation.',
+          focusArea: d.weaknesses?.[0] || 'Focus on sentence connectors and eliminating mid-thought pauses.',
+          feedbackSummary: d.suggestions?.[0] || 'Solid speaking attempt with promising cadence.',
+        };
+        evaluationProvider = feedbackResponse.provider;
+        logger.info(`✨ [AIService] Evaluated speech assessment via ${evaluationProvider.toUpperCase()}`);
       }
+    } catch (evalErr: any) {
+      logger.warn(`Speech assessment evaluation error: ${evalErr?.message || evalErr}`);
     }
 
-    // ── 2. AUTOMATIC FALLBACK: Google Gemini ───────────────────────────
-    if (!aiAssessment && this.gemini) {
-      try {
-        const prompt = `You are Mira, a friendly AI English teacher.
-Evaluate this spoken response from a ${selectedLevel} English learner:
-Transcript: "${rawTranscript}"
-Duration: ${duration} seconds.
-
-Return valid JSON ONLY with these exact keys:
-{
-  "fluency": <number 0-100>,
-  "pronunciation": <number 0-100>,
-  "grammar": <number 0-100>,
-  "vocabulary": <number 0-100>,
-  "strength": "<concise encouraging sentence about what they did well>",
-  "focusArea": "<practical tip on what to improve next>",
-  "feedbackSummary": "<warm 1-2 sentence overall spoken feedback>"
-}`;
-
-        const response = await this.gemini.models.generateContent({
-          model: this.geminiModel,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-            maxOutputTokens: 500,
-          },
-        });
-
-        const text = response.text?.trim();
-        if (text) {
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (typeof parsed.fluency === 'number' && typeof parsed.pronunciation === 'number') {
-              aiAssessment = parsed;
-              evaluationProvider = 'gemini';
-              logger.info(`✨ [Fallback AI: Gemini] Evaluated speech assessment (${this.geminiModel})`);
-            }
-          }
-        }
-      } catch (geminiErr: any) {
-        const errorMsg = geminiErr?.message || String(geminiErr);
-        logger.warn(
-          `⚠️ [Fallback 2 Triggered] Gemini assessment fallback failed: ${errorMsg.substring(0, 100)}. Routing to local speech engine...`
-        );
-      }
-    }
-
-    // Apply scores from AI provider (Claude or Gemini) if successfully parsed
+    // Apply scores from AI provider (Claude or Local Engine) if successfully parsed
     if (aiAssessment) {
       fluencyScore = aiAssessment.fluency || fluencyScore;
       pronunciationScore = aiAssessment.pronunciation || pronunciationScore;
@@ -694,16 +595,12 @@ Return valid JSON ONLY with these exact keys:
       return { answer: "Please ask any question about today's lesson, grammar, or vocabulary!" };
     }
 
-    const result = await analyzeStudentDoubt(
-      {
-        userId: params.userId,
-        day: params.day,
-        userQuestion: question,
-        topic: params.topic,
-      },
-      this.anthropic,
-      this.gemini
-    );
+    const result = await analyzeStudentDoubt({
+      userId: params.userId,
+      day: params.day,
+      userQuestion: question,
+      topic: params.topic,
+    });
 
     return { answer: result.answer, provider: result.provider };
   }

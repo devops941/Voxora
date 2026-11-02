@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 interface Config {
   port: number;
@@ -12,8 +13,8 @@ interface Config {
   refreshTokenExpiresIn: string;
   anthropicApiKey: string;
   anthropicModel: string;
-  geminiApiKey: string;
-  geminiModel: string;
+  claudeCooldownMs: number;
+  claudeTimeoutMs: number;
   nodeEnv: string;
   googleCloudApiKey: string;
   googleClientId: string;
@@ -49,9 +50,9 @@ const config: Config = {
   refreshTokenSecret: requireEnv('REFRESH_TOKEN_SECRET'),
   refreshTokenExpiresIn: optionalEnv('REFRESH_TOKEN_EXPIRES_IN', '30d'),
   anthropicApiKey: optionalEnv('ANTHROPIC_API_KEY', ''),
-  anthropicModel: optionalEnv('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
-  geminiApiKey: optionalEnv('GEMINI_API_KEY', ''),
-  geminiModel: optionalEnv('GEMINI_MODEL', 'gemini-2.5-flash'),
+  anthropicModel: optionalEnv('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022'),
+  claudeCooldownMs: parseInt(optionalEnv('CLAUDE_COOLDOWN_MS', '60000'), 10),
+  claudeTimeoutMs: parseInt(optionalEnv('CLAUDE_TIMEOUT_MS', '8000'), 10),
   nodeEnv: optionalEnv('NODE_ENV', 'development'),
   googleCloudApiKey: optionalEnv('GOOGLE_CLOUD_API_KEY', ''),
   googleClientId: optionalEnv('GOOGLE_CLIENT_ID', ''),

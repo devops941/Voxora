@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { lessonController } from './lesson.controller';
+import { authMiddleware } from '../../middleware/auth.middleware';
 
 const router = Router();
+
+// Protect ALL lesson routes with JWT Authentication
+router.use(authMiddleware);
 
 // Aggregated dashboard data (User profile, streak, today's lesson, 90-day progress)
 router.get('/dashboard', (req, res, next) => lessonController.getDashboard(req, res, next));

@@ -48,6 +48,26 @@ export function authMiddleware(req: AuthRequest, _res: Response, next: NextFunct
   }
 }
 
+export function optionalAuthMiddleware(req: AuthRequest, _res: Response, next: NextFunction): void {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7).trim();
+      if (token) {
+        const decoded = verifyAccessToken(token);
+        req.user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role,
+        };
+      }
+    }
+  } catch {
+    // Ignore invalid/expired tokens in optional auth mode
+  }
+  next();
+}
+
 export function requireRole(...roles: string[]) {
   return (req: AuthRequest, _res: Response, next: NextFunction): void => {
     if (!req.user) {
