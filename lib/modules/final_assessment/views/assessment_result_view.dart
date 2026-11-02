@@ -6,7 +6,7 @@ import 'package:voxora/data/models/final_assessment_model.dart';
 import 'package:voxora/modules/final_assessment/controllers/final_assessment_controller.dart';
 
 class AssessmentResultView extends StatelessWidget {
-  AssessmentResultView({super.key});
+  const AssessmentResultView({super.key});
 
   @override
   Widget build(BuildContext context) {
