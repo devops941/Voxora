@@ -5,7 +5,7 @@ class ApiConstants {
   ApiConstants._();
 
   /// Deployed production backend (verified Vercel deployment)
-  static const String productionBaseUrl = 'https://voxora-iota-plum.vercel.app/api/v1';
+  static const String productionBaseUrl = 'https://backend-five-green-2ziisziw96.vercel.app/api/v1';
 
   /// Default local development backend (Android emulator: 10.0.2.2, desktop/web: localhost)
   static const String developmentBaseUrl = 'http://10.0.2.2:3000/api/v1';
